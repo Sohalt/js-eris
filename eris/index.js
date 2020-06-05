@@ -1,4 +1,5 @@
 const crypto = require('./crypto.js')
+const base32 = require('../base32.js')
 
 function ContentAddressableStorage (put, get) {
   this.put = put
@@ -154,6 +155,27 @@ async function buildMerkleTree (input, verificationKey, cas) {
   return finalize(state, 0)
 }
 
+function makeReadCapability (level, rootReference, readKey) {
+  const cap = new Uint8Array(67)
+
+  // Set version to 0
+  cap.set([0], 0)
+
+  // Set type to 1 (for read capability)
+  cap.set([1], 1)
+
+  // Set level
+  cap.set([level], 2)
+
+  // Set root reference
+  cap.set(rootReference, 3)
+
+  // Set key
+  cap.set(readKey, 35)
+
+  return "urn:erisx:".concat(base32.encode(cap))
+}
+
 async function put (content, cas = new NullContentAddressableStorage()) {
   // read key is the hash of the content
   const readKey = await crypto.hash(content)
@@ -168,12 +190,13 @@ async function put (content, cas = new NullContentAddressableStorage()) {
   // derive the verification key from the read key
   const verificationKey = await crypto.derive_verification_key(readKey)
 
-  return buildMerkleTree(paddedAndEncrypted, verificationKey, cas)
+  const tree = await buildMerkleTree(paddedAndEncrypted, verificationKey, cas)
+
+  return makeReadCapability(tree.level, tree.rootReference, readKey)
 }
 
 module.exports = {
   ContentAddressableStorage: ContentAddressableStorage,
   NullContentAddressableStorage: NullContentAddressableStorage,
-  put: put,
-  blockGenerator: blockGenerator
+  put: put
 }
