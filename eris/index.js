@@ -32,11 +32,24 @@ async function * blockGenerator (buffer, blockSize = 4096) {
   if (buffer.lenght > 0) yield buffer
 }
 
+function baseEncode (n, encoded = []) {
+  if (n > 0) {
+    const r = n % 128
+    encoded.push(r)
+    return baseEncode((n - r) / 128, encoded)
+  } else {
+    return encoded.reverse()
+  }
+}
+
 /* Compute nonce from node position (level and count)
  */
 function nodeNonce (level, count) {
-  // TODO
-  return new Uint8Array(12)
+  const baseEncoded = baseEncode(count)
+  const levelShift = new Array(level - 1).fill(255)
+  const padding = new Array(12 - level + 1 - baseEncoded.length).fill(0)
+
+  return Uint8Array.from(padding.concat(baseEncoded).concat(levelShift))
 }
 
 async function buildMerkleTree (input, verificationKey, cas) {
@@ -161,5 +174,6 @@ async function put (content, cas = new NullContentAddressableStorage()) {
 module.exports = {
   ContentAddressableStorage: ContentAddressableStorage,
   NullContentAddressableStorage: NullContentAddressableStorage,
-  put: put
+  put: put,
+  blockGenerator: blockGenerator
 }
