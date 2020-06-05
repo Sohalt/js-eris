@@ -1,8 +1,9 @@
 {
   "name": "js-eris",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Encoding for Robust Immutable Storage",
-  "main": "index.js",
+  "main": "src/eris.js",
+  "exports": "src/eris.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

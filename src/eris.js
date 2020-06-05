@@ -1,5 +1,5 @@
 const crypto = require('./crypto.js')
-const base32 = require('../base32.js')
+const base32 = require('./base32.js')
 
 function ContentAddressableStorage (put, get) {
   this.put = put
