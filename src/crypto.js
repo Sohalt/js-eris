@@ -29,6 +29,11 @@ module.exports = {
   derive_verification_key: async function (readKey) {
     await sodium.ready
     return sodium.crypto_kdf_derive_from_key(32, 1, 'eris.key', readKey)
+  },
+
+  is_zero: async function (buf) {
+    await sodium.ready
+    return sodium.is_zero(buf)
   }
 
 }

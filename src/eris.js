@@ -19,9 +19,27 @@ function NullContentAddressableStorage () {
   )
 }
 
+/* A in-memory content-addressable storage backed by a Map
+ * */
+function MapContentAddressableStorage () {
+  this._map = new Map()
+  ContentAddressableStorage.call(
+    this,
+    async function (block) {
+      const ref = await crypto.hash(block)
+      const key = base32.encode(ref)
+      this._map.set(key, block)
+      return ref
+    }, async function (ref) {
+      const key = base32.encode(ref)
+      return this._map.get(key)
+    }
+  )
+}
+
 /* Helper to read blocks from a buffer
  */
-async function * blockGenerator (buffer, blockSize = 4096) {
+function * blockGenerator (buffer, blockSize = 4096) {
   // yield blocks
   while (buffer.byteLength >= blockSize) {
     const block = buffer.slice(0, blockSize)
@@ -140,7 +158,7 @@ async function buildMerkleTree (input, verificationKey, cas) {
   }
 
   // Get data blocks from input
-  for await (const dataBlock of blockGenerator(input)) {
+  for (const dataBlock of blockGenerator(input)) {
     // put data block in content-addressable storage
     const dataBlockRef = await cas.put(dataBlock)
 
@@ -161,8 +179,8 @@ function makeReadCapability (level, rootReference, readKey) {
   // Set version to 0
   cap.set([0], 0)
 
-  // Set type to 1 (for read capability)
-  cap.set([1], 1)
+  // Set type to 0 (for read capability)
+  cap.set([0], 1)
 
   // Set level
   cap.set([level], 2)
@@ -173,7 +191,23 @@ function makeReadCapability (level, rootReference, readKey) {
   // Set key
   cap.set(readKey, 35)
 
-  return "urn:erisx:".concat(base32.encode(cap))
+  return 'urn:erisx:'.concat(base32.encode(cap))
+}
+
+function decodeCapability (cap) {
+  if (cap.substring(0, 10) === 'urn:erisx:') {
+    const buffer = base32.decode(cap.substring(10))
+    const view = new Uint8Array(buffer)
+    return {
+      version: view[0],
+      type: view[1],
+      level: view[2],
+      rootReference: view.slice(3, 35),
+      key: view.slice(35, 67)
+    }
+  } else {
+    throw new Error('Can not decode ERIS URN.')
+  }
 }
 
 async function put (content, cas = new NullContentAddressableStorage()) {
@@ -195,8 +229,54 @@ async function put (content, cas = new NullContentAddressableStorage()) {
   return makeReadCapability(tree.level, tree.rootReference, readKey)
 }
 
+async function * decodeTree (cas, verificationKey, ref, nodeLevel, nodeCount) {
+
+  // Get block from cas
+  const block = await cas.get(ref)
+
+  if (nodeLevel === 0) {
+    // if level 0, then it is a data block
+    yield block
+  } else {
+    // decode node
+    const nonce = nodeNonce(nodeLevel, nodeCount)
+    const decodedBlock = await crypto.stream_xor(block, nonce, verificationKey)
+
+    // Counter for children
+    var i = 0
+
+    // read child refs from decoded blocks
+    for (const childRef of blockGenerator(decodedBlock, 32)) {
+      if (!(await crypto.is_zero(childRef))) {
+        const childLevel = nodeLevel - 1
+        const childCount = (128 * nodeCount) + i
+
+        // decode sub-tree
+        yield * decodeTree(cas, verificationKey, childRef, childLevel, childCount)
+
+        // increment the child counter
+        i++
+      }
+    }
+  }
+}
+
+async function * get (capability, cas) {
+  capability = decodeCapability(capability)
+
+  if (capability.type !== 0) {
+    throw new Error('Not a read capability')
+  }
+
+  const verificationKey = await crypto.derive_verification_key(capability.key)
+
+  yield * decodeTree(cas, verificationKey, capability.rootReference, capability.level, 0)
+}
+
 module.exports = {
   ContentAddressableStorage: ContentAddressableStorage,
   NullContentAddressableStorage: NullContentAddressableStorage,
-  put: put
+  MapContentAddressableStorage: MapContentAddressableStorage,
+  put: put,
+  get: get
 }
