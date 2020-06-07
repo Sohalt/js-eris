@@ -1,0 +1,24 @@
+{
+  "name": "js-eris-examples-ipfs",
+  "version": "0.1.0",
+  "description": "Use IPFS as a content-addressable storage",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/openengiadina/js-eris.git"
+  },
+  "author": "pukkamustard",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://gitlab.com/openengiadina/js-eris/issues"
+  },
+  "homepage": "https://gitlab.com/openengiadina/js-eris#readme",
+  "dependencies": {
+    "cids": "^0.8.1",
+    "ipfs": "^0.46.0",
+    "js-eris": "file:../.."
+  }
+}
