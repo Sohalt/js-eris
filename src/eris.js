@@ -261,7 +261,22 @@ async function * decodeTree (cas, verificationKey, ref, nodeLevel, nodeCount) {
   }
 }
 
-async function * get (capability, cas) {
+async function concatBlocks (iterable) {
+  const blocks = []
+  for await (const block of iterable) {
+    blocks.push(block)
+  }
+
+  const out = new Uint8Array(blocks.length * 4096)
+
+  for (const i in blocks) {
+    out.set(blocks[i], i * 4096)
+  }
+
+  return out
+}
+
+async function get (capability, cas) {
   capability = decodeCapability(capability)
 
   if (capability.type !== 0) {
@@ -270,7 +285,16 @@ async function * get (capability, cas) {
 
   const verificationKey = await crypto.derive_verification_key(capability.key)
 
-  yield * decodeTree(cas, verificationKey, capability.rootReference, capability.level, 0)
+  const blockGenerator = decodeTree(cas, verificationKey, capability.rootReference, capability.level, 0)
+
+  const encrypted = await concatBlocks(blockGenerator)
+
+  const nonce = new Uint8Array(crypto.stream_xor_noncebytes)
+  const padded = await crypto.stream_xor(encrypted, nonce, capability.key)
+
+  const unpadded = await crypto.unpad(padded)
+
+  return unpadded
 }
 
 module.exports = {
