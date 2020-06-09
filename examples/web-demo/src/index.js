@@ -72,7 +72,7 @@ function rdfParse (input, contentType) {
         }
       })
       .on('error', (error) => {
-        throw error
+        reject(error)
       })
       .on('end', () => {
         resolve(fg.toCanonicalForm())

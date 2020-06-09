@@ -2,22 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Encoding for Robust Immutable Storage - Demo</title>
+    <title>Encoding for Robust Immutable Storage</title>
     <link rel="stylesheet" href="style.css">
     <script src="index.js"></script>
   </head>
   <body>
-    <h1>Encoding for Robust Immutable Storage (ERIS) - Demo</h1>
+    <h1>Encoding for Robust Immutable Storage (ERIS)</h1>
     <div>
 
-      <p>ERIS is a scheme for encoding content into uniformly sized encrypted blocks and a URN that can be used to decode the content given the blocks.</p>
+      <div id="notes">
+      <p>This is a demo of ERIS - An Encoding for Robust Immutable Storage.</p>
+
+
+      </div>
 
       <main>
         <div id="input">
           <h2>Input</h2>
+
+          <p>Enter some text and click Encode to get the URN that uniquely identifies the text.</p>
+
           <textarea id="input-textarea"></textarea>
 
           <br> <br>
+
+          <p>RDF data is normalized before it is encoded. This means that the same content always gets the same identifier (URN).</p><p>Load some sample RDF data to see how the normalized form looks (it's not pretty).</p>
 
           <button id="input-load-sample-vocabulary">
             Load sample vocabulary
@@ -55,10 +64,17 @@
 
       <h2>About</h2>
 
-      ERIS is developed as part of the <a href="https://openengiadina.net/">openEngiadina</a> project.
+      <p>ERIS encodes any content into uniformly sized (4kB) encrypted blocks. The original content can only be decoded with the URN (which contains the encryption key). </p>
+
+      <p>For more information on how ERIS works see TODO.</p>
+
+      <p>There are two tricks used to encode RDF see TODO for more information.</p>
+
+      <p>This demo and the JavaScript (and Guile) implementations are free software. See the <a href="https://gitlab.com/openengiadina/js-eris">Git repository</a>.
+
+      <p>ERIS is developed as part of the <a href="https://openengiadina.net/">openEngiadina</a> project.</p>
 
     </div>
 
-    <!-- page content -->
   </body>
 </html>
