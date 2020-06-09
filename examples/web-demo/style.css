@@ -1,0 +1,35 @@
+body {
+    font-family: monospace;
+    font-size: 16px;
+}
+main {
+    display: flex;
+    flex-wrap: wrap;
+}
+textarea {
+    resize: none;
+    width: 90%;
+    height: 200px;
+}
+
+#input {
+    width: 600px;
+    padding: 10px;
+}
+
+#controls {
+    width: 100px;
+    padding: 10px;
+    align-self: center;
+}
+
+#encoded {
+    width: 600px;
+    padding: 10px;
+}
+
+#encoded-eris-urn {
+    width: 90%;
+}
+
+
