@@ -16,16 +16,33 @@
         <div id="input">
           <h2>Input</h2>
           <textarea id="input-textarea"></textarea>
+
+          <br> <br>
+
+          <button id="input-load-sample-vocabulary">
+            Load sample vocabulary
+          </button>
+
         </div>
 
         <div id="controls">
           <button id="controls-encode">Encode</button>
+
+          <br> <br>
+
+          <label>Input format</label>
+          <select id="controls-input-type" name="input-type" selected="plain-text">
+            <option value="text/plain">plain text</option>
+            <option value="text/turtle">RDF Turtle</option>
+            <option value="application/ld+json">JSON-LD</option>
+          </select>
         </div>
 
         <div id="encoded">
           <h2>Encoded</h2>
           <input id="encoded-eris-urn" type="url" readonly>
           </input>
+          <pre id="encoded-data"></pre>
         </div>
 
       </main>

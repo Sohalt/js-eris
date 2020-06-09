@@ -12,9 +12,11 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "browserify": "^16.5.1",
-    "watchify": "^3.11.1",
     "cids": "^0.8.1",
     "ipfs": "^0.46.0",
-    "js-eris": "file:../.."
+    "js-eris": "file:../..",
+    "rdf-parse": "^1.3.0",
+    "streamify-string": "^1.0.1",
+    "watchify": "^3.11.1"
   }
 }

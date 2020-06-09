@@ -18,9 +18,14 @@ textarea {
 }
 
 #controls {
-    width: 100px;
+    width: 200px;
     padding: 10px;
-    align-self: center;
+    margin-top: 100px;
+    text-align: center;
+}
+
+#controls-options {
+    margin-top: 20px;
 }
 
 #encoded {
@@ -32,4 +37,7 @@ textarea {
     width: 90%;
 }
 
+#encoded-data {
+    white-space: pre-wrap;
+}
 
