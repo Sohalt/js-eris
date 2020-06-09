@@ -58395,6 +58395,20 @@ const signify = `
    rdfs:domain <#Signature> .
 `
 
+const alyssa = `
+{"@context": "https://www.w3.org/ns/activitystreams",
+ "type": "Person",
+ "id": "https://social.example/alyssa/",
+ "name": "Alyssa P. Hacker",
+ "preferredUsername": "alyssa",
+ "summary": "Lisp enthusiast hailing from MIT",
+ "inbox": "https://social.example/alyssa/inbox/",
+ "outbox": "https://social.example/alyssa/outbox/",
+ "followers": "https://social.example/alyssa/followers/",
+ "following": "https://social.example/alyssa/following/",
+ "liked": "https://social.example/alyssa/liked/"}
+`
+
 function rdfParse (input, contentType) {
   return new Promise((resolve, reject) => {
     const textStream = Streamify(input)
@@ -58422,7 +58436,9 @@ async function main () {
 
   // get elements from dom
   const inputTextarea = document.getElementById('input-textarea')
+  const inputLoadSampleText = document.getElementById('input-load-sample-text')
   const inputLoadSampleVocabulary = document.getElementById('input-load-sample-vocabulary')
+  const inputLoadSampleActor = document.getElementById('input-load-sample-actor')
   const controlsEncode = document.getElementById('controls-encode')
   const controlsInputType = document.getElementById('controls-input-type')
   const encodedErisUrn = document.getElementById('encoded-eris-urn')
@@ -58469,6 +58485,11 @@ async function main () {
   inputLoadSampleVocabulary.onclick = function (e) {
     inputTextarea.value = signify
     controlsInputType.value = 'text/turtle'
+  }
+
+  inputLoadSampleActor.onclick = function (e) {
+    inputTextarea.value = alyssa
+    controlsInputType.value = 'application/ld+json'
   }
 }
 

@@ -39,5 +39,7 @@ textarea {
 
 #encoded-data {
     white-space: pre-wrap;
+    max-height: 400px;
+    overflow: auto;
 }
 
