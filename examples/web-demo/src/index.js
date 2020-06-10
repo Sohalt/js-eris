@@ -92,6 +92,7 @@ async function main () {
   const controlsEncode = document.getElementById('controls-encode')
   const controlsDecode = document.getElementById('controls-decode')
   const controlsInputType = document.getElementById('controls-input-type')
+  const controlsError = document.getElementById('controls-error')
 
   const encodedErisReadCap = document.getElementById('encoded-eris-read-cap')
   const encodedData = document.getElementById('encoded-data')
@@ -139,24 +140,34 @@ async function main () {
     return ERIS.get(readCap, cas)
   }
 
+  function setError (err) {
+    console.error(err)
+    controlsError.innerText = err
+  }
+
+  function clearError () {
+    controlsError.innerText = ''
+  }
+
   controlsEncode.onclick = async function (e) {
+    clearError()
     try {
       const urn = await encode()
       encodedErisReadCap.value = urn
       renderBlocks(cas)
     } catch (err) {
       console.error(err)
-      encodedErisReadCap.value = 'ERROR (see console)'
+      setError(err)
     }
   }
 
   controlsDecode.onclick = async function (e) {
+    clearError()
     try {
       const decoded = await decode()
       inputTextarea.value = utf8Decoder.decode(decoded)
     } catch (err) {
-      console.error(err)
-      inputTextarea.value = 'ERROR (see console)'
+      setError(err)
     }
   }
 

@@ -34,6 +34,11 @@ module.exports = {
   is_zero: async function (buf) {
     await sodium.ready
     return sodium.is_zero(buf)
+  },
+
+  memcmp: async function (a, b) {
+    await sodium.ready
+    return sodium.memcmp(a,b)
   }
 
 }

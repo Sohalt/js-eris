@@ -32,8 +32,10 @@ textarea {
     text-align: center;
 }
 
-#controls-options {
-    margin-top: 20px;
+#controls-error {
+    background-color: red;
+    white-space: pre-wrap;
+    overflow: auto;
 }
 
 #encoded {
@@ -48,6 +50,7 @@ textarea {
 
 #encoded-data {
     white-space: pre-wrap;
+    max-width: 90%;
     max-height: 300px;
     overflow: auto;
 }
@@ -56,5 +59,9 @@ textarea {
     background-color: #EEE;
     margin: 10px;
     flex-grow: 1;
+}
+
+.block {
+    background-color: #ddd;
 }
 
