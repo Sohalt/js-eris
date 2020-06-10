@@ -173,14 +173,14 @@ async function buildMerkleTree (input, verificationKey, cas) {
   return finalize(state, 0)
 }
 
-function makeReadCapability (level, rootReference, readKey) {
+function makeCapability(type, level, rootReference, readKey) {
   const cap = new Uint8Array(67)
 
   // Set version to 0
   cap.set([0], 0)
 
-  // Set type to 0 (for read capability)
-  cap.set([0], 1)
+  // Set type
+  cap.set([0], type)
 
   // Set level
   cap.set([level], 2)
@@ -241,7 +241,7 @@ async function put (content, cas = new NullContentAddressableStorage()) {
 
   const tree = await buildMerkleTree(paddedAndEncrypted, verificationKey, cas)
 
-  return makeReadCapability(tree.level, tree.rootReference, readKey)
+  return makeCapability(0, tree.level, tree.rootReference, readKey)
 }
 
 async function * decodeTree (cas, verificationKey, ref, nodeLevel, nodeCount) {
@@ -317,10 +317,43 @@ async function get (capability, cas) {
   return unpadded
 }
 
+async function verify (capability, cas) {
+  capability = decodeCapability(capability)
+
+  var verificationKey
+
+  if (capability.type !== 0) {
+    verificationKey = await crypto.derive_verification_key(capability.key)
+  } else {
+    verificationKey = capability.key
+  }
+
+  const blockGenerator = decodeTree(cas, verificationKey, capability.rootReference, capability.level, 0)
+
+  await concatBlocks(blockGenerator)
+
+  return true
+}
+
+async function deriveVerificationCapability (capability) {
+  capability = decodeCapability(capability)
+
+  if (capability.type !== 0) {
+    throw new Error('Not a read capability')
+  }
+
+  const verificationKey = await crypto.derive_verification_key(capability.key)
+  return makeCapability(1, capability.level, capability.rootReference, verificationKey)
+}
+
 module.exports = {
   ContentAddressableStorage: ContentAddressableStorage,
   NullContentAddressableStorage: NullContentAddressableStorage,
   MapContentAddressableStorage: MapContentAddressableStorage,
+
   put: put,
-  get: get
+  get: get,
+  verify: verify,
+
+  deriveVerificationCapability: deriveVerificationCapability
 }

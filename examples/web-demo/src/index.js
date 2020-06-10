@@ -91,11 +91,13 @@ async function main () {
 
   const controlsEncode = document.getElementById('controls-encode')
   const controlsDecode = document.getElementById('controls-decode')
+  const controlsVerify = document.getElementById('controls-verify')
   const controlsInputType = document.getElementById('controls-input-type')
   const controlsError = document.getElementById('controls-error')
   const controlsSuccess = document.getElementById('controls-success')
 
   const encodedErisReadCap = document.getElementById('encoded-eris-read-cap')
+  const encodedErisVerificationCap = document.getElementById('encoded-eris-verification-cap')
   const blockContainer = document.getElementById('block-container')
 
   // a ContentAddressableStorage based on a JavaScipt Map
@@ -186,6 +188,8 @@ async function main () {
     try {
       const urn = await encode()
       encodedErisReadCap.value = urn
+      const verifyUrn = await ERIS.deriveVerificationCapability(urn)
+      encodedErisVerificationCap.value = verifyUrn
       renderBlocks(cas)
       setSuccess('Encoded!')
     } catch (err) {
@@ -200,6 +204,17 @@ async function main () {
       const decoded = await decode()
       inputTextarea.value = utf8Decoder.decode(decoded)
       setSuccess('Decoded!')
+    } catch (err) {
+      setError(err)
+    }
+  }
+
+  controlsVerify.onclick = async function (e) {
+    setSuccess('')
+    try {
+      const verificationCap = encodedErisVerificationCap.value
+      await ERIS.verify(verificationCap, cas)
+      setSuccess('Verification passed!')
     } catch (err) {
       setError(err)
     }

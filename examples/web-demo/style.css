@@ -32,6 +32,11 @@ textarea {
     text-align: center;
 }
 
+#controls button {
+    font-size: 18px;
+    font-family: monospace;
+}
+
 #controls-error {
     background-color: red;
     white-space: pre-wrap;
@@ -51,6 +56,10 @@ textarea {
 }
 
 #encoded-eris-read-cap {
+    width: 90%;
+}
+
+#encoded-eris-verification-cap {
     width: 90%;
 }
 
