@@ -88,9 +88,12 @@ async function main () {
   const inputLoadAliceInWonderland = document.getElementById('input-load-alice-in-wonderland')
   const inputLoadSampleVocabulary = document.getElementById('input-load-sample-vocabulary')
   const inputLoadSampleActor = document.getElementById('input-load-sample-actor')
+
   const controlsEncode = document.getElementById('controls-encode')
+  const controlsDecode = document.getElementById('controls-decode')
   const controlsInputType = document.getElementById('controls-input-type')
-  const encodedErisUrn = document.getElementById('encoded-eris-urn')
+
+  const encodedErisReadCap = document.getElementById('encoded-eris-read-cap')
   const encodedData = document.getElementById('encoded-data')
 
   // a ContentAddressableStorage based on a JavaScipt Map
@@ -131,14 +134,30 @@ async function main () {
     return ERIS.put(input, cas)
   }
 
-  controlsEncode.onclick = function (e) {
-    encode().then((urn) => {
-      encodedErisUrn.value = urn
+  async function decode () {
+    const readCap = encodedErisReadCap.value
+    return ERIS.get(readCap, cas)
+  }
+
+  controlsEncode.onclick = async function (e) {
+    try {
+      const urn = await encode()
+      encodedErisReadCap.value = urn
       renderBlocks(cas)
-    }).catch((e) => {
-      console.error(e)
-      encodedErisUrn.value = 'ERROR (see console)'
-    })
+    } catch (err) {
+      console.error(err)
+      encodedErisReadCap.value = 'ERROR (see console)'
+    }
+  }
+
+  controlsDecode.onclick = async function (e) {
+    try {
+      const decoded = await decode()
+      inputTextarea.value = utf8Decoder.decode(decoded)
+    } catch (err) {
+      console.error(err)
+      inputTextarea.value = 'ERROR (see console)'
+    }
   }
 
   inputLoadSampleVocabulary.onclick = function (e) {

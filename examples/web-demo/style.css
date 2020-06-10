@@ -20,14 +20,13 @@ textarea {
 
 #input {
     background-color: #EEE;
-    flex-basis: 600px;
-    flex-grow: 3;
+    flex: 3 0;
     padding: 10px;
     margin: 10px;
 }
 
 #controls {
-    flex-basis: 200px;
+    flex: 1 0;
     padding: 10px;
     margin-top: 100px;
     text-align: center;
@@ -39,12 +38,11 @@ textarea {
 
 #encoded {
     background-color: #EEE;
-    flex-basis: 600px;
-    flex-grow: 3;
+    flex: 3 0;
     padding: 10px;
 }
 
-#encoded-eris-urn {
+#encoded-eris-read-cap {
     width: 90%;
 }
 

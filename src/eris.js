@@ -198,12 +198,27 @@ function decodeCapability (cap) {
   if (cap.substring(0, 10) === 'urn:erisx:') {
     const buffer = base32.decode(cap.substring(10))
     const view = new Uint8Array(buffer)
+
+    const version = view[0]
+    if (version !== 0) throw new Error('Capability has unsupported ERIS version')
+
+    const type = view[1]
+    if (!(type === 0 || type === 1)) throw new Error('Unknown capability type')
+
+    const level = view[2]
+
+    const rootReference = view.slice(3,35)
+    if (rootReference.length !== 32) throw new Error('Could not extract root reference from ERIS capability')
+
+    const key = view.slice(35, 67)
+    if (key.length !== 32) throw new Error('Could not extract key from ERIS capability')
+   
     return {
-      version: view[0],
-      type: view[1],
-      level: view[2],
-      rootReference: view.slice(3, 35),
-      key: view.slice(35, 67)
+      version: version,
+      type: type,
+      level: level,
+      rootReference: rootReference,
+      key: key
     }
   } else {
     throw new Error('Can not decode ERIS URN.')
