@@ -97,6 +97,8 @@ async function main () {
   const encodedErisReadCap = document.getElementById('encoded-eris-read-cap')
   const encodedData = document.getElementById('encoded-data')
 
+  const blockContainer = document.getElementById('block-container')
+
   // a ContentAddressableStorage based on a JavaScipt Map
   const cas = new ERIS.MapContentAddressableStorage()
 
@@ -122,9 +124,39 @@ async function main () {
     }
   }
 
+  function createBlockDiv (block, cas) {
+    const blockDiv = document.createElement('div')
+    blockDiv.className = 'block'
+
+    const blockTitle = document.createTextNode(block)
+
+    const blockRemove = document.createElement('button')
+    blockRemove.innerText = 'remove'
+    blockRemove.onclick = function (e) {
+      cas._map.delete(block)
+      renderBlocks(cas)
+    }
+
+    const blockCorrupt = document.createElement('button')
+    blockCorrupt.innerText = 'randomize'
+    blockCorrupt.onclick = function (e) {
+      const randomBytes = new Uint8Array(32)
+      window.crypto.getRandomValues(randomBytes)
+      cas._map.set(block, randomBytes)
+    }
+
+    blockDiv.appendChild(blockTitle)
+    blockDiv.appendChild(blockRemove)
+    blockDiv.appendChild(blockCorrupt)
+
+    return blockDiv
+  }
+
   async function renderBlocks (cas) {
-    for (const block of cas._map.entries()) {
-      console.log(block)
+    blockContainer.innerHTML = ''
+    for (const block of cas._map.keys()) {
+      const blockDiv = createBlockDiv(block, cas)
+      blockContainer.appendChild(blockDiv)
     }
   }
 

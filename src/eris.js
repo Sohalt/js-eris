@@ -248,11 +248,11 @@ async function * decodeTree (cas, verificationKey, ref, nodeLevel, nodeCount) {
 
   // Get block from cas
   const block = await cas.get(ref)
-  if (block === undefined) throw new Error('Can not retrieve block')
+  if (block === undefined) throw new Error('Can not get block: ' + base32.encode(ref))
 
   // check integrity of block
   const blockHash = await crypto.hash(block)
-  if (!crypto.memcmp(ref, blockHash)) throw new Error('Block is corrupted')
+  if (!await crypto.memcmp(ref, blockHash)) throw new Error('Block is corrupted: ' + base32.encode(ref))
 
   if (nodeLevel === 0) {
     // if level 0, then it is a data block
