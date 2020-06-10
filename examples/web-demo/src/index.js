@@ -85,13 +85,16 @@ async function main () {
 
   // get elements from dom
   const inputTextarea = document.getElementById('input-textarea')
-  const inputLoadSampleText = document.getElementById('input-load-sample-text')
+  const inputLoadAliceInWonderland = document.getElementById('input-load-alice-in-wonderland')
   const inputLoadSampleVocabulary = document.getElementById('input-load-sample-vocabulary')
   const inputLoadSampleActor = document.getElementById('input-load-sample-actor')
   const controlsEncode = document.getElementById('controls-encode')
   const controlsInputType = document.getElementById('controls-input-type')
   const encodedErisUrn = document.getElementById('encoded-eris-urn')
   const encodedData = document.getElementById('encoded-data')
+
+  // a ContentAddressableStorage based on a JavaScipt Map
+  const cas = new ERIS.MapContentAddressableStorage()
 
   // a TextEncoder for encoding strings as UTF-8 encoded Uint8Array
   const utf8Encoder = new TextEncoder()
@@ -115,16 +118,23 @@ async function main () {
     }
   }
 
+  async function renderBlocks (cas) {
+    for (const block of cas._map.entries()) {
+      console.log(block)
+    }
+  }
+
   async function encode () {
     // get input as Uint8Array
     const input = await getInputAsUint8Array()
     encodedData.innerHTML = utf8Decoder.decode(input)
-    return ERIS.put(input)
+    return ERIS.put(input, cas)
   }
 
   controlsEncode.onclick = function (e) {
     encode().then((urn) => {
       encodedErisUrn.value = urn
+      renderBlocks(cas)
     }).catch((e) => {
       console.error(e)
       encodedErisUrn.value = 'ERROR (see console)'
@@ -139,6 +149,12 @@ async function main () {
   inputLoadSampleActor.onclick = function (e) {
     inputTextarea.value = alyssa
     controlsInputType.value = 'application/ld+json'
+  }
+
+  inputLoadAliceInWonderland.onclick = async function (e) {
+    const response = await fetch('alice-in-wonderland.txt')
+    inputTextarea.value = await response.text()
+    controlsInputType.value = 'text/plain'
   }
 }
 

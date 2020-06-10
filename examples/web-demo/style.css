@@ -8,6 +8,10 @@ main {
     display: flex;
     flex-wrap: wrap;
 }
+
+.break {
+    flex-basis: 100%;
+}
 textarea {
     resize: none;
     width: 90%;
@@ -15,12 +19,15 @@ textarea {
 }
 
 #input {
-    width: 600px;
+    background-color: #EEE;
+    flex-basis: 600px;
+    flex-grow: 3;
     padding: 10px;
+    margin: 10px;
 }
 
 #controls {
-    width: 200px;
+    flex-basis: 200px;
     padding: 10px;
     margin-top: 100px;
     text-align: center;
@@ -31,7 +38,9 @@ textarea {
 }
 
 #encoded {
-    width: 600px;
+    background-color: #EEE;
+    flex-basis: 600px;
+    flex-grow: 3;
     padding: 10px;
 }
 
@@ -41,7 +50,13 @@ textarea {
 
 #encoded-data {
     white-space: pre-wrap;
-    max-height: 400px;
+    max-height: 300px;
     overflow: auto;
+}
+
+#blocks {
+    background-color: #EEE;
+    margin: 10px;
+    flex-grow: 1;
 }
 

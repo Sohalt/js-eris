@@ -26,29 +26,40 @@
 
           <br> <br>
 
-          <p>RDF data is normalized before it is encoded. This means that the same content always gets the same identifier (URN).</p><p>Load some sample RDF data to see how the normalized form looks (it's not pretty).</p>
+          <details>
 
-          <button id="input-load-sample-vocabulary">
-            Load sample vocabulary
-          </button>
+            <summary>Sample Data</summary>
 
-          <button id="input-load-sample-actor">
-            Load sample ActivityPub Actor (JSON-LD)
-          </button>
+            <br>
+
+            <button id="input-load-alice-in-wonderland">
+              Load Alice in Wonderland
+            </button>
+
+            <h3>RDF</h3>
+            <p>RDF data is normalized before it is encoded. This means that the same content always gets the same identifier (URN).</p><p>Load some sample RDF data to see how the normalized form looks (it's not pretty).</p>
+
+            <button id="input-load-sample-vocabulary">
+              Load sample vocabulary
+            </button>
+
+            <button id="input-load-sample-actor">
+              Load sample ActivityPub Actor (JSON-LD)
+            </button>
+          </details>
 
         </div>
 
         <div id="controls">
           <button id="controls-encode">Encode</button>
-
-          <br> <br>
-
-          <label>Input format</label>
-          <select id="controls-input-type" name="input-type" selected="plain-text">
-            <option value="text/plain">plain text</option>
-            <option value="text/turtle">RDF Turtle</option>
-            <option value="application/ld+json">JSON-LD</option>
-          </select>
+          <details>
+            <summary>input format</summary>
+            <select id="controls-input-type" name="input-type" selected="plain-text">
+              <option value="text/plain">plain text</option>
+              <option value="text/turtle">RDF Turtle</option>
+              <option value="application/ld+json">JSON-LD</option>
+            </select>
+          </details>
         </div>
 
         <div id="encoded">
@@ -56,8 +67,23 @@
           <h3>ERIS URN</h3>
           <input id="encoded-eris-urn" type="url" readonly>
           </input>
-          <h3>encoded data</h3>
-          <pre id="encoded-data"></pre>
+
+          <br>
+          <br>
+
+          <details>
+            <summary>encoded data</summary>
+            <p>The data as encoded by ERIS. For plain text this is the same as the input. RDF is normalized before encoding with ERIS.</p>
+            <pre id="encoded-data"></pre>
+          </details>
+
+        </div>
+
+        <div class="break">
+        </div>
+
+        <div id="blocks">
+          <h2>Blocks</h2>
         </div>
 
       </main>
