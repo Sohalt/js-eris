@@ -93,10 +93,9 @@ async function main () {
   const controlsDecode = document.getElementById('controls-decode')
   const controlsInputType = document.getElementById('controls-input-type')
   const controlsError = document.getElementById('controls-error')
+  const controlsSuccess = document.getElementById('controls-success')
 
   const encodedErisReadCap = document.getElementById('encoded-eris-read-cap')
-  const encodedData = document.getElementById('encoded-data')
-
   const blockContainer = document.getElementById('block-container')
 
   // a ContentAddressableStorage based on a JavaScipt Map
@@ -163,7 +162,6 @@ async function main () {
   async function encode () {
     // get input as Uint8Array
     const input = await getInputAsUint8Array()
-    encodedData.innerHTML = utf8Decoder.decode(input)
     return ERIS.put(input, cas)
   }
 
@@ -174,19 +172,22 @@ async function main () {
 
   function setError (err) {
     console.error(err)
+    controlsSuccess.innerText = ''
     controlsError.innerText = err
   }
 
-  function clearError () {
+  function setSuccess (msg) {
     controlsError.innerText = ''
+    controlsSuccess.innerText = msg
   }
 
   controlsEncode.onclick = async function (e) {
-    clearError()
+    setSuccess('')
     try {
       const urn = await encode()
       encodedErisReadCap.value = urn
       renderBlocks(cas)
+      setSuccess('Encoded!')
     } catch (err) {
       console.error(err)
       setError(err)
@@ -194,10 +195,11 @@ async function main () {
   }
 
   controlsDecode.onclick = async function (e) {
-    clearError()
+    setSuccess('')
     try {
       const decoded = await decode()
       inputTextarea.value = utf8Decoder.decode(decoded)
+      setSuccess('Decoded!')
     } catch (err) {
       setError(err)
     }

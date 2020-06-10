@@ -38,6 +38,12 @@ textarea {
     overflow: auto;
 }
 
+#controls-success {
+    background-color: lightgreen;
+    white-space: pre-wrap;
+    overflow: auto;
+}
+
 #encoded {
     background-color: #EEE;
     flex: 3 0;

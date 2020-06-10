@@ -11,8 +11,9 @@
     <div>
 
       <div id="notes">
-      <p>This is a demo of ERIS - An Encoding for Robust Immutable Storage.</p>
+        <p>This is a demo of ERIS - An Encoding for Robust Immutable Storage.</p>
 
+        <p>ERIS encodes any content into uniformly sized (4kB) encrypted blocks. The original content can only be decoded with the URN (which contains the encryption key). </p>
 
       </div>
 
@@ -37,7 +38,7 @@
             </button>
 
             <h3>RDF</h3>
-            <p>RDF data is normalized before it is encoded. This means that the same content always gets the same identifier (URN).</p><p>Load some sample RDF data to see how the normalized form looks (it's not pretty).</p>
+            <p>RDF data is normalized before it is encoded. This means that the same content always gets the same identifier (URN).</p><p>Load some sample RDF data, encode it and then decode it to see how the normalized form looks (it's not pretty).</p>
 
             <button id="input-load-sample-vocabulary">
               Load sample vocabulary
@@ -51,7 +52,7 @@
         </div>
 
         <div id="controls">
-          <button id="controls-encode">Encode</button>
+          <button id="controls-encode">Encode →</button>
           <details>
             <summary>input format</summary>
             <select id="controls-input-type" name="input-type" selected="plain-text">
@@ -61,44 +62,35 @@
             </select>
           </details>
           <br>
-          <button id="controls-decode">Decode</button>
+          <button id="controls-decode">← Decode</button>
 
           <br>
           <pre id="controls-error"></pre>
+          <pre id="controls-success"></pre>
         </div>
 
         <div id="encoded">
           <h2>Encoded</h2>
 
           <h3>Read capability</h3>
-          <input id="encoded-eris-read-cap" type="url">
+          <input id="encoded-eris-read-cap" type="url"></input>
 
-          </input>
-
-          <br>
-          <br>
-
-          <details>
-            <summary>encoded data</summary>
-            <pre id="encoded-data"></pre>
-          </details>
+          <div id="blocks">
+            <h3>Blocks</h3>
+            <div id="block-container">
+            </div>
+          </div>
 
         </div>
 
         <div class="break">
         </div>
 
-        <div id="blocks">
-          <h2>Blocks</h2>
-          <div id="block-container">
-          </div>
-        </div>
 
       </main>
 
       <h2>About</h2>
 
-      <p>ERIS encodes any content into uniformly sized (4kB) encrypted blocks. The original content can only be decoded with the URN (which contains the encryption key). </p>
 
       <p>For more information on how ERIS works see TODO.</p>
 
