@@ -21,9 +21,8 @@
         <div id="input">
           <h2>Input</h2>
 
-          <p>Enter some text and click Encode to get the URN that uniquely identifies the text.</p>
-
-          <textarea id="input-textarea"></textarea>
+          <textarea id="input-textarea"
+                    placeholder="Enter some text and click Encode..."></textarea>
 
           <br> <br>
 
@@ -85,6 +84,14 @@
 
           <div id="blocks">
             <h3>Blocks</h3>
+            <p>Blocks are stored in memory and can be removed or randomized (corrupted).</p>
+
+            <details>
+              <summary>IPFS</summary>
+              <p>Optionally IPFS can be used as block storage and transport. Note: This does not work reliably from the browser. For more reliable demos of how to use ERIS with IPFS see the <a href="https://gitlab.com/openengiadina/data-model/">Guile</a> and <a href="https://gitlab.com/openengiadina/js-eris/-/tree/master/examples/ipfs">node.js </a> implementations/demos.</p>
+              <input id="checkbox-enable-ipfs" type="checkbox">enable IPFS</input>
+            </details>
+
             <div id="block-container">
             </div>
           </div>

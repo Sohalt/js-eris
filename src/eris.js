@@ -173,7 +173,7 @@ async function buildMerkleTree (input, verificationKey, cas) {
   return finalize(state, 0)
 }
 
-function makeCapability(type, level, rootReference, readKey) {
+function makeCapability (type, level, rootReference, readKey) {
   const cap = new Uint8Array(67)
 
   // Set version to 0
