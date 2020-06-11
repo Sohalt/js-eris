@@ -9,8 +9,9 @@ pages:
         - cd examples/web-demo
         - npm install
         - npm run build
+        - mv public ../../
     artifacts:
         paths:
-            - examples/web-demo/public
+            - public
     only:
         - master
