@@ -1,0 +1,16 @@
+# GitLab CI to build the web-demo application
+image: node:latest
+
+pages:
+    cache:
+        paths:
+            - examples/web-demo/node_modules/
+    script:
+        - cd examples/web-demo
+        - npm install
+        - npm run build
+    artifacts:
+        paths:
+            - examples/web-demo/public
+    only:
+        - master
