@@ -88,7 +88,7 @@
 
             <details>
               <summary>IPFS</summary>
-              <p>Optionally IPFS can be used as block storage and transport. Note: This does not work reliably from the browser. For more reliable demos of how to use ERIS with IPFS see the <a href="https://gitlab.com/openengiadina/data-model/">Guile</a> and <a href="https://gitlab.com/openengiadina/js-eris/-/tree/master/examples/ipfs">node.js </a> implementations/demos.</p>
+              <p>Optionally IPFS can be used as block storage and transport. Note: This does not work reliably from the browser. For more reliable demos of how to use ERIS with IPFS see the <a href="https://gitlab.com/openengiadina/data-model/">Guile</a> and <a href="https://gitlab.com/openengiadina/js-eris/-/tree/master/examples/ipfs">node.js</a> implementations/demos.</p>
               <input id="checkbox-enable-ipfs" type="checkbox">enable IPFS</input>
             </details>
 
@@ -101,19 +101,36 @@
         <div class="break">
         </div>
 
-
       </main>
 
+      <div id="about">
       <h2>About</h2>
 
+      <p>ERIS is an encoding for content-addressing. The read capability which can be used to reference encoded content is exactly determined by the content itself (using a cryptographic hash).</p>
 
-      <p>For more information on how ERIS works see TODO.</p>
+      <p>As the ERIS reference is an URI/URN, it can be referenced from usual web content. In particular, ERIS works very well with RDF (including JSON-LD).</p>
 
-      <p>There are two tricks used to encode RDF see TODO for more information.</p>
+      <p>ERIS improves over naive content-addressing (just using the hash of the content as identifier):
+        <ul>
+          <li>Peers transporting and storing block without holding the read capability are not able to read the content.</li>
+          <li>Blocks are uniformly sized and small. This allows corruption to be detected much faster, can be used to optimize storage and transport levels and incentivizes caching as caching an individual block is cheap (as compared to caching the entire content).</p>
+          <li>Peers holding the verification capability can cache all the blocks required to decode the content without being able to read the content.</li>
+        </ul>
+      </p>
+
+      <p>ERIS is developed as part of the <a href="https://openengiadina.net/">openEngiadina</a> project. We intend to use ERIS to implement an ActivityPub server enabling offline-first and decentralized applications.</p>
+
+    For more information see:
+
+      <ul>
+        <li><a href="https://openengiadina.net/papers/eris.html">An Encoding for Robust Immutable Storage</a></li>
+        <li><a href="https://openengiadina.net/papers/content-addressable-rdf.html">Content-addressable RDF</a></li>
+        <li><a href="https://openengiadina.net/papers/rdf-signify.html">RDF Signify</a> (how to sign content-addressed RDF)</li>
+      </ul>
 
       <p>This demo and the JavaScript (and Guile) implementations are free software. See the <a href="https://gitlab.com/openengiadina/js-eris">Git repository</a>.
 
-      <p>ERIS is developed as part of the <a href="https://openengiadina.net/">openEngiadina</a> project.</p>
+      </div>
 
     </div>
 
