@@ -49,6 +49,66 @@ async function * streamUnpad (stream, blockSize) {
   yield unpadded
 }
 
+// Read capability
+// ===============
+
+function encodeReadCapability (arity, level, reference, key) {
+  const cap = new Uint8Array(66)
+
+  // set block size
+  if (arity === 16) {
+    cap.set([0], 0)
+  } else if (arity === 512) {
+    cap.set([1], 0)
+  } else {
+    throw new Error('Invalid arity')
+  }
+
+  // set level
+  cap.set([level], 1)
+
+  // set root reference
+  cap.set(reference, 2)
+
+  // set root key
+  cap.set(key, 34)
+
+  return 'urn:erisx2:'.concat(base32.encode(cap))
+}
+
+function decodeReadCapability (cap) {
+  if (cap.substring(0, 11) === 'urn:erisx2:') {
+    const buffer = base32.decode(cap.substring(11))
+    const view = new Uint8Array(buffer)
+
+    const blockSizeCode = view[0]
+
+    let blockSize
+    if (blockSizeCode === 0) {
+      blockSize = 1024
+    } else if (blockSizeCode === 1) {
+      blockSize = 32768
+    } else {
+      throw new Error('Unknown block size')
+    }
+
+    const level = view[1]
+
+    const rootReference = view.slice(2,34)
+    if (rootReference.length !== 32) throw new Error('Could not extract root reference from ERIS capability')
+
+    const key = view.slice(34, 66)
+    if (key.length !== 32) throw new Error('Could not extract key from ERIS capability')
+
+    return {
+      blockSize: blockSize,
+      level: level,
+      rootReference: rootReference,
+      key: key
+    }
+  }
+}
+
 // Encoding
 // ========
 
@@ -130,30 +190,6 @@ async function * collect (levels, level, arity, convergenceSecret) {
   }
 }
 
-function encodeReadCapability (arity, level, reference, key) {
-  const cap = new Uint8Array(66)
-
-  // set block size
-  if (arity === 16) {
-    cap.set([0], 0)
-  } else if (arity === 512) {
-    cap.set([1], 0)
-  } else {
-    throw new Error('Invalid arity')
-  }
-
-  // set level
-  cap.set([level], 1)
-
-  // set root reference
-  cap.set(reference, 2)
-
-  // set root key
-  cap.set(key, 34)
-
-  return 'urn:erisx2:'.concat(base32.encode(cap))
-}
-
 async function * finalize (levels, level, arity, convergenceSecret) {
   const topLevel = Array.from(levels.keys()).reduce((a, b) => Math.max(a, b))
   const currentLevel = levels.get(level) || []
@@ -218,6 +254,77 @@ function encode (content, blockSize, convergenceSecret = new Uint8Array(32)) {
   }
 }
 
+async function encodeToUrn (content, blockSize, convergenceSecret = new Uint8Array(32)) {
+  for await (const value of encode(content, blockSize, convergenceSecret)) {
+    if (typeof value === 'string') {
+      return value
+    }
+  }
+}
+
+async function encodeToMap (content, blockSize, convergenceSecret = new Uint8Array(32)) {
+  const blocks = new Map()
+  for await (const value of encode(content, blockSize, convergenceSecret)) {
+    if (typeof value === 'string') {
+      return {
+        urn: value,
+        blocks: blocks
+      }
+    } else {
+      blocks.set(base32.encode(value.reference), value.block)
+    }
+  }
+}
+
+// Decoding
+// ========
+
+async function * decodeRecurse (level, reference, key, getBlock) {
+  const encrypted = await getBlock(reference)
+  const decrypted = await crypto.chacha20(encrypted, key)
+
+  if (level === 0) {
+    // yield content block
+    yield decrypted
+  } else {
+    for await (const referenceKey of blockGenerator(decrypted, 64)) {
+      const reference = referenceKey.slice(0, 32)
+      const key = referenceKey.slice(32, 64)
+
+      yield * decodeRecurse(level - 1, reference, key, getBlock)
+    }
+  }
+}
+
+async function * decode (urn, getBlock) {
+  // decode the read capability
+  const { blockSize, level, rootReference, key } = decodeReadCapability(urn)
+
+  const padded = decodeRecurse(level, rootReference, key, getBlock)
+
+  yield * streamUnpad(padded, blockSize)
+}
+
+async function decodeToUint8Array (urn, getBlock) {
+  return concatUint8Array(decode(urn, getBlock))
+}
+
+async function decodeToString (urn, getBlock) {
+  const buf = await concatUint8Array(decode(urn, getBlock))
+
+  const utf8Decoder = new TextDecoder()
+  return utf8Decoder.decode(buf)
+}
+
 module.exports = {
-  encode: encode
+  encode: encode,
+  encodeToUrn: encodeToUrn,
+  encodeToMap: encodeToMap,
+
+  decode: decode,
+  decodeToUint8Array: decodeToUint8Array,
+  decodeToString: decodeToString,
+
+  encodeReadCapability: encodeReadCapability,
+  decodeReadCapability: decodeReadCapability
 }
