@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 pukkamustard <pukkamustard@posteo.net>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 const sodium = require('libsodium-wrappers-sumo')
 
 const nullNonce = new Uint8Array(12)

@@ -6,3 +6,6 @@ This is a JavaScript implementation of [the Encoding for Robust Immutable Storag
 
 See the [examples](./examples) folder.
 
+## License
+
+[LGPL-3.0-or-later](./LICENSES/LGPL-3.0-or-later.txt)

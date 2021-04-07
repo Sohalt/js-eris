@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 pukkamustard <pukkamustard@posteo.net>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 const crypto = require('./crypto.js')
 const base32 = require('./base32.js')
 
