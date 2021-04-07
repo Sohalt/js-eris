@@ -1,34 +1,27 @@
 const sodium = require('libsodium-wrappers-sumo')
 
-const ERIS_BLOCKSIZE = 4096
+const nullNonce = new Uint8Array(12)
 
 module.exports = {
 
-  hash: async function (message, key) {
+  blake2b: async function (message, key) {
     await sodium.ready
     return sodium.crypto_generichash(32, message, key)
   },
 
-  pad: async function (buf) {
+  chacha20: async function (input, key) {
     await sodium.ready
-    return sodium.pad(buf, ERIS_BLOCKSIZE)
+    return sodium.crypto_stream_chacha20_ietf_xor(input, nullNonce, key)
   },
 
-  unpad: async function (buf) {
+  pad: async function (buf, blockSize) {
     await sodium.ready
-    return sodium.unpad(buf, ERIS_BLOCKSIZE)
+    return sodium.pad(buf, blockSize)
   },
 
-  stream_xor: async function (input, nonce, key) {
+  unpad: async function (buf, blockSize) {
     await sodium.ready
-    return sodium.crypto_stream_chacha20_ietf_xor(input, nonce, key)
-  },
-
-  stream_xor_noncebytes: 12,
-
-  derive_verification_key: async function (readKey) {
-    await sodium.ready
-    return sodium.crypto_kdf_derive_from_key(32, 1, 'eris.key', readKey)
+    return sodium.unpad(buf, blockSize)
   },
 
   is_zero: async function (buf) {
