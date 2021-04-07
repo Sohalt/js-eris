@@ -1,45 +1,9 @@
 const crypto = require('./crypto.js')
 const base32 = require('./base32.js')
 
-function ContentAddressableStorage (put, get) {
-  this.put = put
-  this.get = get
-}
-
-/* Dummy Content-addressable storage that does not store anything
- */
-function NullContentAddressableStorage () {
-  ContentAddressableStorage.call(
-    this,
-    async function (block) {
-      return crypto.hash(block)
-    }, async function (ref) {
-      throw new Error('can not retrieve block')
-    }
-  )
-}
-
-/* A in-memory content-addressable storage backed by a Map
- * */
-function MapContentAddressableStorage () {
-  this._map = new Map()
-  ContentAddressableStorage.call(
-    this,
-    async function (block) {
-      const ref = await crypto.hash(block)
-      const key = base32.encode(ref)
-      this._map.set(key, block)
-      return ref
-    }, async function (ref) {
-      const key = base32.encode(ref)
-      return this._map.get(key)
-    }
-  )
-}
-
 /* Helper to read blocks from a buffer
  */
-function * blockGenerator (buffer, blockSize = 4096) {
+function * blockGenerator (buffer, blockSize) {
   // yield blocks
   while (buffer.byteLength >= blockSize) {
     const block = buffer.slice(0, blockSize)
@@ -48,312 +12,336 @@ function * blockGenerator (buffer, blockSize = 4096) {
   }
 
   // yield remaining buffer if not empty
-  if (buffer.lenght > 0) yield buffer
+  if (buffer.byteLength > 0) {
+    yield buffer
+  }
 }
 
-function baseEncode (n, encoded = []) {
-  if (n > 0) {
-    const r = n % 128
-    encoded.push(r)
-    return baseEncode((n - r) / 128, encoded)
+/* Pad the last buffer on a stream
+ * */
+async function * streamPad (stream, blockSize) {
+  let last
+  let cur = await stream.next()
+
+  while (!cur.done) {
+    if (last) { yield last }
+    last = cur.value
+    cur = await stream.next()
+  }
+
+  const padded = await crypto.pad(last, blockSize)
+  yield * blockGenerator(padded, blockSize)
+}
+
+/* Unpad the last buffer on a stream
+ * */
+async function * streamUnpad (stream, blockSize) {
+  let last
+  let cur = await stream.next()
+
+  while (!cur.done) {
+    if (last) { yield last }
+    last = cur.value
+    cur = await stream.next()
+  }
+
+  const unpadded = await crypto.unpad(last, blockSize)
+  yield unpadded
+}
+
+// Read capability
+// ===============
+
+function encodeReadCapability (arity, level, reference, key) {
+  const cap = new Uint8Array(66)
+
+  // set block size
+  if (arity === 16) {
+    cap.set([0], 0)
+  } else if (arity === 512) {
+    cap.set([1], 0)
   } else {
-    return encoded.reverse()
+    throw new Error('Invalid arity')
   }
+
+  // set level
+  cap.set([level], 1)
+
+  // set root reference
+  cap.set(reference, 2)
+
+  // set root key
+  cap.set(key, 34)
+
+  return 'urn:erisx2:'.concat(base32.encode(cap))
 }
 
-/* Compute nonce from node position (level and count)
- */
-function nodeNonce (level, count) {
-  const baseEncoded = baseEncode(count)
-  const levelShift = new Array(level - 1).fill(255)
-  const padding = new Array(12 - level + 1 - baseEncoded.length).fill(0)
-
-  return Uint8Array.from(padding.concat(baseEncoded).concat(levelShift))
-}
-
-async function buildMerkleTree (input, verificationKey, cas) {
-
-  // Helper to increment level counter
-  function incrementLevelCount (state, level) {
-    state.levelCount.set(level, (state.levelCount.get(level) || 0) + 1)
-  }
-
-  // Helper to add a reference to a level
-  function addRefToLevel (state, ref, level) {
-    if (state.levels.has(level)) {
-      state.levels.get(level).push(ref)
-    } else {
-      state.levels.set(level, [ref])
-    }
-    incrementLevelCount(state, level)
-  }
-
-  // Helper to create a node from array of references
-  function createNode (refs) {
-    const node = new Uint8Array(4096)
-
-    for (const i in refs) {
-      node.set(refs[i], 32 * i)
-    }
-
-    return node
-  }
-
-  // Collect all reference at level into a single node at level above
-  async function forceCollect (state, level) {
-    const nodeLevel = level + 1
-    const nodeCount = state.levelCount.get(nodeLevel) || 0
-
-    // compute nonce from node position
-    const nonce = nodeNonce(nodeLevel, nodeCount)
-
-    // create node
-    const node = createNode(state.levels.get(level))
-
-    // encrypt node
-    const nodeEncrypted = await crypto.stream_xor(node, nonce, verificationKey)
-
-    // put encrypted node in content-addressable storage
-    const ref = await cas.put(nodeEncrypted)
-
-    // add reference to level
-    addRefToLevel(state, ref, nodeLevel)
-
-    // clear the current level
-    state.levels.delete(level)
-  }
-
-  // Collect references at a level if there are enough to fill a node and recurse up
-  async function collect (state, level) {
-    const levelRefs = state.levels.get(level)
-    if (levelRefs && levelRefs.length >= 128) {
-      await forceCollect(state, level)
-      await collect(state, level + 1)
-    }
-  }
-
-  // Finalize remaining levels to a single root reference
-  async function finalize (state, level) {
-    const topLevel = Array.from(state.levels.keys()).reduce((a, b) => Math.max(a, b))
-    const currentLevel = state.levels.get(level) || []
-
-    if ((level === topLevel) && (currentLevel.length === 1)) {
-      // If current level is top level and there is only one ref,
-      // then it is the root reference
-      return { level: level, rootReference: currentLevel[0] }
-    } else if (currentLevel.length > 0) {
-      // if current level is non-empty, collect level and finalize at next level
-      await forceCollect(state, level)
-      return finalize(state, level + 1)
-    } else if (currentLevel.length === 0) {
-      // if current level is empty, finalize at next level
-      return finalize(state, level + 1)
-    }
-  }
-
-  // Initalize state
-  const state = {
-    levels: new Map(),
-    levelCount: new Map()
-  }
-
-  // Get data blocks from input
-  for (const dataBlock of blockGenerator(input)) {
-    // put data block in content-addressable storage
-    const dataBlockRef = await cas.put(dataBlock)
-
-    // add the reference to level 0 of the tree
-    addRefToLevel(state, dataBlockRef, 0)
-
-    // collect references from level 0 to a node
-    await collect(state, 0)
-  }
-
-  // return a single root reference
-  return finalize(state, 0)
-}
-
-function makeCapability (type, level, rootReference, readKey) {
-  const cap = new Uint8Array(67)
-
-  // Set version to 0
-  cap.set([0], 0)
-
-  // Set type
-  cap.set([0], type)
-
-  // Set level
-  cap.set([level], 2)
-
-  // Set root reference
-  cap.set(rootReference, 3)
-
-  // Set key
-  cap.set(readKey, 35)
-
-  return 'urn:erisx:'.concat(base32.encode(cap))
-}
-
-function decodeCapability (cap) {
-  if (cap.substring(0, 10) === 'urn:erisx:') {
-    const buffer = base32.decode(cap.substring(10))
+function decodeReadCapability (cap) {
+  if (cap.substring(0, 11) === 'urn:erisx2:') {
+    const buffer = base32.decode(cap.substring(11))
     const view = new Uint8Array(buffer)
 
-    const version = view[0]
-    if (version !== 0) throw new Error('Capability has unsupported ERIS version')
+    const blockSizeCode = view[0]
 
-    const type = view[1]
-    if (!(type === 0 || type === 1)) throw new Error('Unknown capability type')
+    let blockSize
+    if (blockSizeCode === 0) {
+      blockSize = 1024
+    } else if (blockSizeCode === 1) {
+      blockSize = 32768
+    } else {
+      throw new Error('Unknown block size')
+    }
 
-    const level = view[2]
+    const level = view[1]
 
-    const rootReference = view.slice(3,35)
+    const rootReference = view.slice(2,34)
     if (rootReference.length !== 32) throw new Error('Could not extract root reference from ERIS capability')
 
-    const key = view.slice(35, 67)
+    const key = view.slice(34, 66)
     if (key.length !== 32) throw new Error('Could not extract key from ERIS capability')
-   
+
     return {
-      version: version,
-      type: type,
+      blockSize: blockSize,
       level: level,
       rootReference: rootReference,
       key: key
     }
-  } else {
-    throw new Error('Can not decode ERIS URN.')
   }
 }
 
-async function put (content, cas = new NullContentAddressableStorage()) {
-  // read key is the hash of the content
-  const readKey = await crypto.hash(content)
+// Encoding
+// ========
 
-  // pad the content to evenly fit into 4kB blocks
-  const padded = await crypto.pad(content)
-
-  // encrypt padded content with read key and 0 nonce
-  const nonce = new Uint8Array(crypto.stream_xor_noncebytes)
-  const paddedAndEncrypted = await crypto.stream_xor(padded, nonce, readKey)
-
-  // derive the verification key from the read key
-  const verificationKey = await crypto.derive_verification_key(readKey)
-
-  const tree = await buildMerkleTree(paddedAndEncrypted, verificationKey, cas)
-
-  return makeCapability(0, tree.level, tree.rootReference, readKey)
-}
-
-async function * decodeTree (cas, verificationKey, ref, nodeLevel, nodeCount) {
-
-  // Get block from cas
-  const block = await cas.get(ref)
-  if (block === undefined) throw new Error('Can not get block: ' + base32.encode(ref))
-
-  // check integrity of block
-  const blockHash = await crypto.hash(block)
-  if (!await crypto.memcmp(ref, blockHash)) throw new Error('Block is corrupted: ' + base32.encode(ref))
-
-  if (nodeLevel === 0) {
-    // if level 0, then it is a data block
-    yield block
-  } else {
-    // decode node
-    const nonce = nodeNonce(nodeLevel, nodeCount)
-    const decodedBlock = await crypto.stream_xor(block, nonce, verificationKey)
-
-    // Counter for children
-    var i = 0
-
-    // read child refs from decoded blocks
-    for (const childRef of blockGenerator(decodedBlock, 32)) {
-      if (!(await crypto.is_zero(childRef))) {
-        const childLevel = nodeLevel - 1
-        const childCount = (128 * nodeCount) + i
-
-        // decode sub-tree
-        yield * decodeTree(cas, verificationKey, childRef, childLevel, childCount)
-
-        // increment the child counter
-        i++
-      }
-    }
+async function encryptBlock (input, convergenceSecret) {
+  const key = await crypto.blake2b(input, convergenceSecret)
+  const encryptedBlock = await crypto.chacha20(input, key)
+  const reference = await crypto.blake2b(encryptedBlock)
+  return {
+    encryptedBlock: encryptedBlock,
+    reference: reference,
+    key: key
   }
 }
 
-async function concatBlocks (iterable) {
-  const blocks = []
+async function concatUint8Array (iterable) {
+  const bufs = []
+  let size = 0
+
   for await (const block of iterable) {
-    blocks.push(block)
+    bufs.push(block)
+    size = size + block.byteLength
   }
 
-  const out = new Uint8Array(blocks.length * 4096)
+  const out = new Uint8Array(size)
 
-  for (const i in blocks) {
-    out.set(blocks[i], i * 4096)
+  let offset = 0
+  for (const i in bufs) {
+    out.set(bufs[i], offset)
+    offset = offset + bufs[i].byteLength
   }
 
   return out
 }
 
-async function get (capability, cas) {
-  capability = decodeCapability(capability)
-
-  if (capability.type !== 0) {
-    throw new Error('Not a read capability')
+async function addRefKeyToLevels (levels, level, reference, key) {
+  const refKey = {
+    reference: reference,
+    key: key
   }
 
-  const verificationKey = await crypto.derive_verification_key(capability.key)
-
-  const blockGenerator = decodeTree(cas, verificationKey, capability.rootReference, capability.level, 0)
-
-  const encrypted = await concatBlocks(blockGenerator)
-
-  const nonce = new Uint8Array(crypto.stream_xor_noncebytes)
-  const padded = await crypto.stream_xor(encrypted, nonce, capability.key)
-
-  const unpadded = await crypto.unpad(padded)
-
-  return unpadded
-}
-
-async function verify (capability, cas) {
-  capability = decodeCapability(capability)
-
-  var verificationKey
-
-  if (capability.type !== 0) {
-    verificationKey = await crypto.derive_verification_key(capability.key)
+  if (levels.has(level)) {
+    levels.get(level).push(refKey)
   } else {
-    verificationKey = capability.key
+    levels.set(level, [refKey])
   }
-
-  const blockGenerator = decodeTree(cas, verificationKey, capability.rootReference, capability.level, 0)
-
-  await concatBlocks(blockGenerator)
-
-  return true
 }
 
-async function deriveVerificationCapability (capability) {
-  capability = decodeCapability(capability)
+async function * forceCollect (levels, level, arity, convergenceSecret) {
+  // get the reference key pairs and concat them
+  const rkPairs = levels.get(level).map(async function ({ reference, key }) {
+    return concatUint8Array([reference, key])
+  })
 
-  if (capability.type !== 0) {
-    throw new Error('Not a read capability')
+  // padding
+  const padding = Array(arity - rkPairs.length).fill(new Uint8Array(arity * 64))
+
+  // concat all reference-key pairs on level
+  const node = await concatUint8Array(rkPairs.concat(padding))
+
+  // clear the level
+  levels.delete(level)
+
+  // encrypt node
+  const { encryptedBlock, reference, key } = await encryptBlock(node, convergenceSecret)
+
+  // add reference-key to node in level above
+  await addRefKeyToLevels(levels, level + 1, reference, key)
+
+  // yield the encrypted node
+  yield { block: encryptedBlock, reference: reference }
+}
+
+async function * collect (levels, level, arity, convergenceSecret) {
+  if (levels.get(level).length >= arity) {
+    // collect reference-key pairs at current level and yield blocks
+    yield * forceCollect(levels, level, arity, convergenceSecret)
+    // recursively go up ot next level
+    yield * collect(levels, level + 1, arity, convergenceSecret)
+  }
+}
+
+async function * finalize (levels, level, arity, convergenceSecret) {
+  const topLevel = Array.from(levels.keys()).reduce((a, b) => Math.max(a, b))
+  const currentLevel = levels.get(level) || []
+
+  if ((level === topLevel) && (currentLevel.length === 1)) {
+    // If current level is top level and there is only one ref,
+    // then it is the root reference
+    const { reference, key } = currentLevel[0]
+
+    yield encodeReadCapability(arity, level, reference, key)
+  } else if (currentLevel.length > 0) {
+    // if current level is non-empty, collect level and finalize at next level
+    yield * forceCollect(levels, level, arity, convergenceSecret)
+    yield * finalize(levels, level + 1, arity, convergenceSecret)
+  } else if (currentLevel.length === 0) {
+    // if current level is empty, finalize at next level
+    yield * finalize(levels, level + 1, arity, convergenceSecret)
+  }
+}
+
+async function * streamEncode (content, blockSize, convergenceSecret) {
+  // stream of padded content
+  const padded = streamPad(content, blockSize)
+
+  // arity of Merkle Tree
+  const arity = blockSize / 64
+
+  // initialize the state
+  const levels = new Map()
+
+  for await (const block of padded) {
+    // encrypt block
+    const { encryptedBlock, reference, key } = await encryptBlock(block, convergenceSecret)
+
+    // add reference-key pair to state
+    await addRefKeyToLevels(levels, 0, reference, key)
+
+    // yield encrypted block
+    yield { block: encryptedBlock, reference: reference }
+
+    // attempt to collect at lowest level
+    yield * collect(levels, 0, arity, convergenceSecret)
   }
 
-  const verificationKey = await crypto.derive_verification_key(capability.key)
-  return makeCapability(1, capability.level, capability.rootReference, verificationKey)
+  // clear remaining reference-key pairs
+  yield * finalize(levels, 0, arity, convergenceSecret)
+}
+
+function encode (content, blockSize, convergenceSecret = new Uint8Array(32)) {
+  const prototype = Object.prototype.toString.call(content)
+
+  if (prototype === '[object AsyncGenerator]' || prototype === '[object Generator]') {
+    streamEncode(content, blockSize, convergenceSecret)
+  } else if (prototype === '[object String]') {
+    const utf8Encoder = new TextEncoder()
+    const contentAsUint8 = utf8Encoder.encode(content)
+    const blocks = blockGenerator(contentAsUint8, blockSize)
+    return streamEncode(blocks, blockSize, convergenceSecret)
+  } else if (prototype === '[object Uint8Array]') {
+    const blocks = blockGenerator(content, blockSize)
+    return streamEncode(blocks, blockSize, convergenceSecret)
+  }
+}
+
+async function encodeToUrn (content, blockSize, convergenceSecret = new Uint8Array(32)) {
+  for await (const value of encode(content, blockSize, convergenceSecret)) {
+    if (typeof value === 'string') {
+      return value
+    }
+  }
+}
+
+async function encodeToMap (content, blockSize, convergenceSecret = new Uint8Array(32)) {
+  const blocks = new Map()
+  for await (const value of encode(content, blockSize, convergenceSecret)) {
+    if (typeof value === 'string') {
+      return {
+        urn: value,
+        blocks: blocks
+      }
+    } else {
+      blocks.set(base32.encode(value.reference), value.block)
+    }
+  }
+}
+
+// Decoding
+// ========
+
+async function * decodeRecurse (level, reference, key, getBlock) {
+  const encrypted = await getBlock(reference)
+
+  if (!encrypted) {
+    throw new Error('Could not get block ' + base32.encode(reference))
+  }
+
+  // check integrity of block
+  const refCheck = await crypto.blake2b(encrypted)
+  if (!(await crypto.memcmp(reference, refCheck))) {
+    throw new Error('Block ' + base32.encode(reference) + ' corrupted.')
+  }
+
+  const decrypted = await crypto.chacha20(encrypted, key)
+
+  if (level === 0) {
+    // yield content block
+    yield decrypted
+  } else {
+    for await (const referenceKey of blockGenerator(decrypted, 64)) {
+
+      const reference = referenceKey.slice(0, 32)
+      const key = referenceKey.slice(32, 64)
+
+      // reached padding
+      if (await crypto.is_zero(reference)) {
+        return
+      }
+
+      yield * decodeRecurse(level - 1, reference, key, getBlock)
+    }
+  }
+}
+
+async function * decode (urn, getBlock) {
+  // decode the read capability
+  const { blockSize, level, rootReference, key } = decodeReadCapability(urn)
+
+  const padded = decodeRecurse(level, rootReference, key, getBlock)
+
+  yield * streamUnpad(padded, blockSize)
+}
+
+async function decodeToUint8Array (urn, getBlock) {
+  return concatUint8Array(decode(urn, getBlock))
+}
+
+async function decodeToString (urn, getBlock) {
+  const buf = await concatUint8Array(decode(urn, getBlock))
+
+  const utf8Decoder = new TextDecoder()
+  return utf8Decoder.decode(buf)
 }
 
 module.exports = {
-  ContentAddressableStorage: ContentAddressableStorage,
-  NullContentAddressableStorage: NullContentAddressableStorage,
-  MapContentAddressableStorage: MapContentAddressableStorage,
+  encode: encode,
+  encodeToUrn: encodeToUrn,
+  encodeToMap: encodeToMap,
 
-  put: put,
-  get: get,
-  verify: verify,
+  decode: decode,
+  decodeToUint8Array: decodeToUint8Array,
+  decodeToString: decodeToString,
 
-  deriveVerificationCapability: deriveVerificationCapability
+  encodeReadCapability: encodeReadCapability,
+  decodeReadCapability: decodeReadCapability
 }

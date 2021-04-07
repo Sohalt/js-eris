@@ -2,11 +2,7 @@ const ERIS = require('js-eris')
 const rdfParser = require('rdf-parse').default
 const Streamify = require('streamify-string')
 const FragmentGraph = require('./rdf/fragment-graph.js')
-const IPFS = require('ipfs')
-const CID = require('cids')
-const multihash = require('multihashes')
 const base32 = require('../../../src/base32.js')
-const crypto = require('../../../src/crypto.js')
 
 const signify = `
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -63,92 +59,6 @@ const alyssa = `
  "liked": "https://social.example/alyssa/liked/"}
 `
 
-function MapAndIPFSContentAddressableStorage () {
-  this._map = new Map()
-
-  this._ipfsPut = async function (block) {
-    // put block in IPFS
-    const ipfsBlock = await this._ipfs.block.put(Buffer.from(block), {
-      version: 1, // CIDv1
-      format: 'raw', // don't do any tricks IPFS
-      mhtype: 'blake2b-256', // use BLAKE2b (256bit)
-      timeout: 2000
-    })
-
-    console.log('Put block on IPFS: ' + ipfsBlock.cid.toString())
-
-    // decode the multihash
-    const mhash = await multihash.decode(ipfsBlock.cid.multihash)
-
-    // return the digest
-    return Uint8Array.from(mhash.digest)
-  }
-
-  this._ipfsGet = async function (ref) {
-    // encode ref as mhash
-    const mhash = multihash.encode(Buffer.from(ref), 'blake2b-256')
-    // and as cid
-    const cid = new CID(1, 'raw', mhash)
-
-    // get block from IPFS (timeout after 5s)
-    const block = await this._ipfs.block.get(cid, { timeout: 2000 })
-
-    return Uint8Array.from(block.data)
-  }
-
-  this.activateIPFS = async function () {
-    const ipfs = await IPFS.create({
-      config: {
-        Addresses: {
-          Swarm: [
-            // This is a public webrtc-star server
-            // '/dns4/star-signal.cloud.ipfs.team/wss/p2p-webrtc-star'
-          ]
-        }
-      },
-      repo: 'ipfs-eris',
-      relay: {
-        enabled: true,
-        hop: {
-          enabled: true
-        }
-      }
-    })
-    this._ipfs = ipfs
-    const version = await ipfs.version()
-    console.log('JS-IPFS Version:', version.version)
-    return version
-  }
-
-  this.deactivateIPFS = async function () {
-    await this._ipfs.stop()
-    delete this._ipfs
-  }
-
-  ERIS.ContentAddressableStorage.call(
-    this,
-    async function (block) {
-      const ref = await crypto.hash(block)
-      const key = base32.encode(ref)
-      this._map.set(key, block)
-
-      if (this._ipfs) {
-        await this._ipfsPut(block)
-      }
-
-      return ref
-    }, async function (ref) {
-      const key = base32.encode(ref)
-
-      if (this._map.has(key)) {
-        return this._map.get(key)
-      } else if (this._ipfs) {
-        return this._ipfsGet(key)
-      }
-    }
-  )
-}
-
 function rdfParse (input, contentType) {
   return new Promise((resolve, reject) => {
     const textStream = Streamify(input)
@@ -172,8 +82,6 @@ function rdfParse (input, contentType) {
 }
 
 async function main () {
-  console.log('Hail ERIS!')
-
   // get elements from dom
   const inputTextarea = document.getElementById('input-textarea')
   const inputLoadAliceInWonderland = document.getElementById('input-load-alice-in-wonderland')
@@ -182,18 +90,15 @@ async function main () {
 
   const controlsEncode = document.getElementById('controls-encode')
   const controlsDecode = document.getElementById('controls-decode')
-  const controlsVerify = document.getElementById('controls-verify')
   const controlsInputType = document.getElementById('controls-input-type')
   const controlsError = document.getElementById('controls-error')
   const controlsSuccess = document.getElementById('controls-success')
 
   const encodedErisReadCap = document.getElementById('encoded-eris-read-cap')
-  const encodedErisVerificationCap = document.getElementById('encoded-eris-verification-cap')
   const blockContainer = document.getElementById('block-container')
-  const checkBoxEnableIPFS = document.getElementById('checkbox-enable-ipfs')
 
-  // a ContentAddressableStorage based on a JavaScript Map and optionally on IPFS
-  const cas = new MapAndIPFSContentAddressableStorage()
+  // Block storage
+  const blocks = new Map()
 
   // a TextEncoder for encoding strings as UTF-8 encoded Uint8Array
   const utf8Encoder = new TextEncoder()
@@ -217,7 +122,7 @@ async function main () {
     }
   }
 
-  function createBlockDiv (block, cas) {
+  function createBlockDiv (block, blocks) {
     const blockDiv = document.createElement('div')
     blockDiv.className = 'block'
 
@@ -226,8 +131,8 @@ async function main () {
     const blockRemove = document.createElement('button')
     blockRemove.innerText = 'remove'
     blockRemove.onclick = function (e) {
-      cas._map.delete(block)
-      renderBlocks(cas)
+      blocks.delete(block)
+      renderBlocks(blocks)
     }
 
     const blockCorrupt = document.createElement('button')
@@ -235,7 +140,7 @@ async function main () {
     blockCorrupt.onclick = function (e) {
       const randomBytes = new Uint8Array(32)
       window.crypto.getRandomValues(randomBytes)
-      cas._map.set(block, randomBytes)
+      blocks.set(block, randomBytes)
     }
 
     blockDiv.appendChild(blockTitle)
@@ -245,10 +150,10 @@ async function main () {
     return blockDiv
   }
 
-  async function renderBlocks (cas) {
+  async function renderBlocks (blocks) {
     blockContainer.innerHTML = ''
-    for (const block of cas._map.keys()) {
-      const blockDiv = createBlockDiv(block, cas)
+    for (const block of blocks.keys()) {
+      const blockDiv = createBlockDiv(block, blocks)
       blockContainer.appendChild(blockDiv)
     }
   }
@@ -256,12 +161,22 @@ async function main () {
   async function encode () {
     // get input as Uint8Array
     const input = await getInputAsUint8Array()
-    return ERIS.put(input, cas)
+
+    for await (const value of ERIS.encode(input, 1024)) {
+      if (typeof value === 'string') {
+        return value
+      } else {
+        blocks.set(base32.encode(value.reference), value.block)
+      }
+    }
   }
 
   async function decode () {
     const readCap = encodedErisReadCap.value
-    return ERIS.get(readCap, cas)
+    const getBlock = function (ref) {
+      return blocks.get(base32.encode(ref))
+    }
+    return ERIS.decodeToUint8Array(readCap, getBlock)
   }
 
   function setError (err) {
@@ -278,13 +193,11 @@ async function main () {
   function disableControls () {
     controlsEncode.disabled = true
     controlsDecode.disabled = true
-    controlsVerify.disabled = true
   }
 
   function enableControls () {
     controlsEncode.disabled = false
     controlsDecode.disabled = false
-    controlsVerify.disabled = false
   }
 
   controlsEncode.onclick = async function (e) {
@@ -293,9 +206,7 @@ async function main () {
     try {
       const urn = await encode()
       encodedErisReadCap.value = urn
-      const verifyUrn = await ERIS.deriveVerificationCapability(urn)
-      encodedErisVerificationCap.value = verifyUrn
-      renderBlocks(cas)
+      renderBlocks(blocks)
       setSuccess('Encoded!')
       enableControls()
     } catch (err) {
@@ -316,44 +227,6 @@ async function main () {
     } catch (err) {
       setError(err)
       enableControls()
-    }
-  }
-
-  controlsVerify.onclick = async function (e) {
-    setSuccess('')
-    disableControls()
-    try {
-      const verificationCap = encodedErisVerificationCap.value
-      await ERIS.verify(verificationCap, cas)
-      setSuccess('Verification passed!')
-      enableControls()
-    } catch (err) {
-      setError(err)
-      enableControls()
-    }
-  }
-
-  checkBoxEnableIPFS.onchange = async function (e) {
-    setSuccess('')
-    disableControls()
-    if (checkBoxEnableIPFS.checked) {
-      try {
-        await cas.activateIPFS()
-        setSuccess('IPFS enabled!')
-        enableControls()
-      } catch (err) {
-        setError(err)
-        enableControls()
-      }
-    } else {
-      try {
-        await cas.deactivateIPFS()
-        setSuccess('IPFS disabled')
-        enableControls()
-      } catch (err) {
-        setError(err)
-        enableControls()
-      }
     }
   }
 

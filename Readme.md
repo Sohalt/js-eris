@@ -1,15 +1,6 @@
-# js-eris
+# JavaScript implementation of ERIS
 
-ERIS encoder and decoder for JavaScript.
-
-## Roadmap / TODOs
-
-### 1.0.0 release
-
-- [ ] finalise ERIS encoding scheme
-- [ ] Encode and decode from and to a stream
-- [ ] Verification capability
-- [ ] Random access to content
+This is a JavaScript implementation of [the Encoding for Robust Immutable Storage (ERIS)](http://purl.org/eris).
 
 ## Examples
 

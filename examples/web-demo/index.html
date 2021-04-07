@@ -13,7 +13,7 @@
       <div id="notes">
         <p>This is a demo of ERIS - An Encoding for Robust Immutable Storage.</p>
 
-        <p>ERIS encodes any content into uniformly sized (4kB) encrypted blocks. The original content can only be decoded with the read capability (an URN which contains the encryption key). </p>
+        <p>ERIS encodes any content into uniformly sized (1KiB or 32KiB) encrypted blocks. The original content can only be decoded with the read capability (an URN which contains the encryption key). </p>
 
       </div>
 
@@ -64,7 +64,6 @@
           <button id="controls-decode">← Decode</button>
           <br>
           <br>
-          <button id="controls-verify">Verify</button>
 
           <br>
           <pre id="controls-error"></pre>
@@ -78,19 +77,9 @@
           <p>The read capability allows content to be read</p>
           <input id="encoded-eris-read-cap" type="url"></input>
 
-          <h3>Verification capability</h3>
-          <p>The verification capability allows all blocks to be verified for integrity, but does not allow the content to be read</p>
-          <input id="encoded-eris-verification-cap" type="url"></input>
-
           <div id="blocks">
             <h3>Blocks</h3>
             <p>Blocks are stored in memory and can be removed or randomized (corrupted).</p>
-
-            <details>
-              <summary>IPFS</summary>
-              <p>Optionally IPFS can be used as block storage and transport. Note: This does not work reliably from the browser. For more reliable demos of how to use ERIS with IPFS see the <a href="https://gitlab.com/openengiadina/data-model/">Guile</a> and <a href="https://gitlab.com/openengiadina/js-eris/-/tree/master/examples/ipfs">node.js</a> implementations/demos.</p>
-              <input id="checkbox-enable-ipfs" type="checkbox">enable IPFS</input>
-            </details>
 
             <div id="block-container">
             </div>
@@ -118,17 +107,9 @@
         </ul>
       </p>
 
-      <p>ERIS is developed as part of the <a href="https://openengiadina.net/">openEngiadina</a> project. We intend to use ERIS to implement an ActivityPub server enabling offline-first and decentralized applications.</p>
+      For more information see the <a href="http://purl.org/eris">specification document</a>
 
-    For more information see:
-
-      <ul>
-        <li><a href="https://openengiadina.net/papers/eris.html">An Encoding for Robust Immutable Storage</a></li>
-        <li><a href="https://openengiadina.net/papers/content-addressable-rdf.html">Content-addressable RDF</a></li>
-        <li><a href="https://openengiadina.net/papers/rdf-signify.html">RDF Signify</a> (how to sign content-addressed RDF)</li>
-      </ul>
-
-      <p>This demo and the JavaScript (and Guile) implementations are free software. See the <a href="https://gitlab.com/openengiadina/js-eris">Git repository</a>.
+      <p>This demo and implementation of ERIS is free software. See the <a href="https://inqlab.net/git/js-eris.git">Git repository</a>.
 
       </div>
 
