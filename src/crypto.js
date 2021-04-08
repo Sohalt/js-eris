@@ -54,10 +54,6 @@ module.exports = {
       }
     }, false)
 
-    if (!n) {
-      throw new Error('invalid padding')
-    }
-
     return buf.slice(0, n)
   },
 
