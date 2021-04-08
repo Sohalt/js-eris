@@ -1,6 +1,6 @@
 {
   "name": "js-eris",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Encoding for Robust Immutable Storage",
   "main": "src/eris.js",
   "exports": "src/eris.js",
