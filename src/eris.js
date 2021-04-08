@@ -162,12 +162,13 @@ async function addRefKeyToLevels (levels, level, reference, key) {
 
 async function * forceCollect (levels, level, arity, convergenceSecret) {
   // get the reference key pairs and concat them
-  const rkPairs = levels.get(level).map(async function ({ reference, key }) {
-    return concatUint8Array([reference, key])
-  })
+  const rkPairs = levels.get(level).flatMap((rk) => [rk.reference, rk.key])
+
+  // how much padding is required
+  const numOfPadding = arity - (rkPairs.length / 2)
 
   // padding
-  const padding = Array(arity - rkPairs.length).fill(new Uint8Array(arity * 64))
+  const padding = Array(numOfPadding).fill(new Uint8Array(64))
 
   // concat all reference-key pairs on level
   const node = await concatUint8Array(rkPairs.concat(padding))
@@ -255,6 +256,12 @@ function encode (content, blockSize, convergenceSecret = new Uint8Array(32)) {
   } else if (prototype === '[object Uint8Array]') {
     const blocks = blockGenerator(content, blockSize)
     return streamEncode(blocks, blockSize, convergenceSecret)
+  } else if (prototype === '[object ArrayBuffer]') {
+    const contentAsUint8 = new Uint8Array(content)
+    const blocks = blockGenerator(contentAsUint8, blockSize)
+    return streamEncode(blocks, blockSize, convergenceSecret)
+  } else {
+    throw new Error('Can not encode object of type ' + prototype)
   }
 }
 
